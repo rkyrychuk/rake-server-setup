@@ -15,5 +15,9 @@ mysql:
 rails:
   domain: "google.com"
   capistrano: true
+  db_backup:  
+    aws:
+      access_key: ""
+      secret_key: ""
   thin:
     #servers: 2

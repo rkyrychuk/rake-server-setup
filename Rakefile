@@ -16,12 +16,13 @@ namespace :setup do
     printf "rake setup:access      #setup server access\n"
     printf "rake setup:environment #install environment\n"
     printf "rake setup:config      #install app config\n"
-    printf "rake setup:app         #install app\n"
+    
+    printf "rake setup:sources     #install app\n"
   end
 
   #task :all => [:environment, :config]
   task :environment => [:ruby, :nginx, :mysql]
-  task :config => [:rails]
+  #task :config => [:app_config, :db_backups]
 
   desc "Setup access"
   setup_task :access do |t|
@@ -43,7 +44,6 @@ namespace :setup do
     end
   end
   
-  desc "Setup ruby"
   setup_task :ruby do |t|
     ruby_config = t.setup_config.ruby
     file_name = File.basename(ruby_config.download_path).gsub(/\.tar\.gz$/, "")
@@ -60,7 +60,6 @@ namespace :setup do
     end
   end
 
-  desc "Setup nginx"
   setup_task :nginx do |t|
     nginx_config = t.setup_config.nginx
     file_name = File.basename(nginx_config.download_path).gsub(/\.tar\.gz$/, "")
@@ -81,7 +80,6 @@ namespace :setup do
     end
   end
 
-  desc "Setup mysql"
   setup_task :mysql do |t|
     mysql_password = SecureRandom.hex(16)
     package_name = t.setup_config.mysql.package_name
@@ -94,9 +92,7 @@ namespace :setup do
       t.run_remote("apt-get -y install #{package_name}")
     end
   end
-
-  desc "Setup rails app"
-  setup_task :rails do |t|
+  setup_task :app_config do |t|
     rails_config = t.setup_config.rails
     app_path = "/var/www/#{rails_config.domain}" 
     server_name = rails_config.domain.gsub(/\./, "-")
@@ -105,12 +101,12 @@ namespace :setup do
     project_files = rails_config.capistrano ? "#{app_path}/current" : "#{app_path}"
 
     t.connect_remote do 
-      pwd = t.run_remote!("cat .mysqlpwd").strip
+      password = t.run_remote!("cat .mysqlpwd").strip
       t.run_remote("mkdir -p #{shared_files}")
       t.run_remote("rm #{shared_files}/* -Rf")
       t.upload!(t.resolve_path("rails_app"), "#{shared_files}/")
       t.upload_modified_yaml(t.resolve_path("templates/database.yml"), "#{shared_files}/config/database.yml") do |yaml|
-        yaml["production"]["password"] = pwd
+        yaml["production"]["password"] = password
         yaml
       end
       
@@ -126,16 +122,16 @@ namespace :setup do
       
       t.run_remote("mkdir -p /etc/nginx/sites-available")
       t.run_remote("mkdir -p /etc/nginx/sites-enabled")
-      t.upload_modified_file(t.resolve_path("templates/nginx_site_config"), "/etc/nginx/sites-available/#{rails_config.domain}") do |site_config|
+      t.upload_modified_file(t.resolve_path("templates/nginx/site_config"), "/etc/nginx/sites-available/#{rails_config.domain}") do |site_config|
         sprintf(site_config, server_name: server_name, project_files: project_files, domain_name: rails_config.domain)
       end
       t.run_remote("ln -s /etc/nginx/sites-available/#{rails_config.domain} /etc/nginx/sites-enabled/#{rails_config.domain}")
       
-      t.upload_modified_file(t.resolve_path("templates/app_start_script"), "/etc/init.d/#{rails_config.domain}") do |config|
+      t.upload_modified_file(t.resolve_path("templates/init.d/app"), "/etc/init.d/#{rails_config.domain}") do |config|
         sprintf(config, project_files: project_files, domain_name: rails_config.domain)
       end
       
-      t.upload!(t.resolve_path("templates/nginx_start_script"), "/etc/init.d/nginx")
+      t.upload!(t.resolve_path("templates/init.d/nginx"), "/etc/init.d/nginx")
       
       t.run_remote("chmod +x /etc/init.d/nginx")
       t.run_remote("chmod +x /etc/init.d/#{rails_config.domain}")
@@ -144,6 +140,41 @@ namespace :setup do
       t.run_remote("update-rc.d #{rails_config.domain} defaults")
     end
   end
+
+  setup_task :db_backups do |t|
+    backup_config = t.setup_config.rails.db_backup
+    
+    if backup_config && backup_config.aws
+      t.connect_remote do 
+
+        t.run_remote("apt-get install s3cmd -y")
+        pwd = t.run_remote!("pwd").strip
+        t.upload_modified_file(t.resolve_path("templates/backup/.s3cfg"), "#{pwd}/.s3cfg") do |config|
+          sprintf(config, access_key: backup_config.aws.access_key, secret_key: backup_config.aws.secret_key)
+        end
+
+        t.run_remote("mkdir -p /var/www/scripts")
+        database_yaml = YAML.load_file(t.resolve_path("templates/database.yml"))
+        mysql_password = t.run_remote!("cat .mysqlpwd").strip
+
+        options = {
+          mysql_user: database_yaml["production"]["username"] || "root",
+          mysql_password: mysql_password,
+          s3_bucket: backup_config.aws.bucket,
+          file_name: database_yaml["production"]["database"],
+          database: database_yaml["production"]["database"]
+        }
+        t.upload_modified_file(t.resolve_path("templates/backup/backup.sh"), "/var/www/scripts/backup.sh") do |config|
+          sprintf(config, options)
+        end
+
+        t.upload_modified_file(t.resolve_path("templates/backup/restore.sh"), "/var/www/scripts/restore.sh") do |config|
+          sprintf(config, options)
+        end
+      end
+    end
+  end
+
 end
 
 
