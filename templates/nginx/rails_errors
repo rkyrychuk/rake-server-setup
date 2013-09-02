@@ -1,0 +1,12 @@
+access_log /var/log/nginx/$server_name-access.log;
+error_log /var/log/nginx/$server_name-error.log;
+
+error_page 502 503 504 /50x.html;
+location = /50x.html {
+  rewrite ^(.*)$ /503.html break;
+}
+error_page 500 /500.html;
+location = /500.html {
+  rewrite ^(.*)$ /500.html break;
+}
+

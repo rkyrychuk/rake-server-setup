@@ -1,0 +1,19 @@
+server:
+  ip: 8.8.8.8
+  username: "root"
+  key: /home/ruby/.ssh/id_rsa
+  public_key: /home/ruby/.ssh/id_rsa.pub
+
+ruby: 
+  download_path: "ftp://ftp.ruby-lang.org/pub/ruby/2.0/ruby-2.0.0-p247.tar.gz"
+nginx:
+  download_path: "http://nginx.org/download/nginx-1.4.2.tar.gz"
+  pcre_path: "http://sourceforge.net/projects/pcre/files/pcre/8.33/pcre-8.33.tar.gz"
+mysql:
+  package_name: "mysql-server-5.5"
+
+rails:
+  domain: "google.com"
+  capistrano: true
+  thin:
+    #servers: 2

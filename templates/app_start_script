@@ -1,0 +1,47 @@
+#!/bin/sh
+### BEGIN INIT INFO
+# Provides:          application
+# Required-Start:    $local_fs $remote_fs
+# Required-Stop:     $local_fs $remote_fs
+# Default-Start:     2 3 4 5
+# Default-Stop:      0 1 6
+# Short-Description: application initscript
+# Description:       application starter
+### END INIT INFO
+
+# Original author: Ruslan Kyrychuk
+
+# Do NOT "set -e"
+
+PATH=/sbin:/bin:/usr/sbin:/usr/bin:/usr/local/sbin:/usr/local/bin
+PROJECT_DIR=%{project_files}
+DAEMON="/usr/local/bin/bundle exec thin"
+SCRIPT_NAME=/etc/init.d/%{domain_name}
+CONFIG_FILE=/etc/thin/%{domain_name}.yml
+
+
+case "$1" in
+  start)
+        cd $PROJECT_DIR
+        rm tmp/pids/thin*.pid
+        $DAEMON start -C $CONFIG_FILE
+        RAILS_ENV=production $PROJECT_DIR/script/delayed_job start
+        ;;
+  stop)
+        cd $PROJECT_DIR
+        $DAEMON stop -C $CONFIG_FILE
+        RAILS_ENV=production $PROJECT_DIR/script/delayed_job stop
+        ;;
+  restart)
+        cd $PROJECT_DIR
+        $DAEMON restart -C $CONFIG_FILE
+        RAILS_ENV=production $PROJECT_DIR/script/delayed_job restart
+        ;;
+  *)
+        echo "Usage: $SCRIPT_NAME {start|stop|restart}" >&2
+        exit 3
+        ;;
+esac
+
+:
+

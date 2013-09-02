@@ -1,0 +1,15 @@
+upstream %{server_name} {
+  server unix:%{project_files}/tmp/thin.0.sock;
+  #server unix:%{project_files}/tmp/thin.1.sock;
+}
+server {
+  listen 80;
+  server_name %{server_name} %{domain_name};
+  root %{project_files}/public;
+
+  location / {
+    include rails_headers;
+    include rails_request;
+  }
+  include rails_errors;
+}
