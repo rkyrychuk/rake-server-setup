@@ -1,3 +1,0 @@
-upstream pult-vertaline-com { 
-	server unix:/var/www/pult.vertaline.com/current/tmp/thin.0.sock;
-}
