@@ -1,4 +1,5 @@
 require 'ostruct'
+require 'tmpdir'
 require 'net/ssh'
 require 'net/sftp'
 require 'yaml'
@@ -86,9 +87,13 @@ class SetupTask < Rake::Task
     File.expand_path(relative_path, File.dirname(__FILE__))
   end
 
+  def tmp_path(path)
+    [Dir.tmpdir, Dir::Tmpname.make_tmpname(File.basename(path), nil)].join("/")
+  end
+
   def modify_remote_file(path, &block)
     print("modify remote #{path}\n")
-    tmp_path = Tempfile.new(File.basename(path)).path
+    tmp_path = self.tmp_path(path)
     self.download!(path, tmp_path)
     File.write(tmp_path, yield(File.read(tmp_path)))
     self.upload!(tmp_path, path)
@@ -96,7 +101,7 @@ class SetupTask < Rake::Task
 
   def upload_modified_file(local_path, remote_path, &block)
     print("modify #{local_path} with upload to #{remote_path}\n")
-    tmp_path = Tempfile.new(File.basename(remote_path)).path
+    tmp_path = self.tmp_path(remote_path)
     File.write(tmp_path, yield(File.read(local_path)))
     self.upload!(tmp_path, remote_path)
   end

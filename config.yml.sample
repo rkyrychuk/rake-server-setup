@@ -17,6 +17,7 @@ rails:
   capistrano: true
   db_backup:  
     aws:
+      bucket: ""
       access_key: ""
       secret_key: ""
   thin:
