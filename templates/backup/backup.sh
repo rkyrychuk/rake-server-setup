@@ -17,4 +17,4 @@ tar -C ${TMP_PATH} -czf ${TMP_PATH}${FILENAME}${DATESTAMP}.tar.gz ${FILENAME}.sq
 s3cmd put -f ${TMP_PATH}${FILENAME}${DATESTAMP}.tar.gz s3://${S3BUCKET}/${MONTH}/${DAY}/
 
 rm ${TMP_PATH}${FILENAME}.sql
-rm ${TMP_PATH}${FILENAME}${DATESTAMP}.tar.gz
+rm ${TMP_PATH}${FILENAME}${DATESTAMP}.tar.g
