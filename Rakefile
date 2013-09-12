@@ -22,7 +22,7 @@ namespace :setup do
 
   #task :all => [:environment, :config]
   task :environment => [:ruby, :nginx, :mysql]
-  #task :config => [:app_config, :db_backups]
+  task :config => [:app_config, :db_backups]
 
   desc "Setup access"
   setup_task :access do |t|
@@ -49,6 +49,9 @@ namespace :setup do
     file_name = File.basename(ruby_config.download_path).gsub(/\.tar\.gz$/, "")
 
     t.connect_remote do
+      old_ruby = t.run_remote!("which -a ruby").strip
+      t.run_remote("rm #{old_ruby} -f") unless old_ruby.empty?
+      
       t.run_remote("apt-get install make gcc libssl-dev openssl libreadline6 libreadline6-dev -y")
       t.run_remote("wget #{ruby_config.download_path} -O #{file_name}.tar.gz")
       t.run_remote("tar -xf #{file_name}.tar.gz")
@@ -171,7 +174,25 @@ namespace :setup do
         t.upload_modified_file(t.resolve_path("templates/backup/restore.sh"), "/var/www/scripts/restore.sh") do |config|
           sprintf(config, options)
         end
+        t.run_remote("chmod +x /var/www/scripts/backup.sh")
+        t.run_remote("chmod +x /var/www/scripts/restore.sh")
       end
+    end
+  end
+
+  setup_task :sources do |t|
+    server_config = t.setup_config.server
+    t.connect_remote do
+      pwd = t.run_remote!("pwd").strip
+      t.run_remote("apt-get -y install git")
+      t.upload!(server_config.key, "#{pwd}/.ssh/id_rsa")
+      t.upload!(server_config.public_key, "#{pwd}/.ssh/id_rsa.pub")
+      t.run_remote("chmod 700 #{pwd}/.ssh/id_rsa")
+      t.run_remote("gem install bundler --no-ri --no-rdoc")
+      t.run_remote("gem update --system")
+      t.run_remote("apt-get install libxml2 libxml2-dev libxslt-dev -y")
+      t.run_remote("apt-get install libmysql-ruby libmysqlclient-dev -y")
+      t.run_remote("rm /usr/bin/ruby")
     end
   end
 
