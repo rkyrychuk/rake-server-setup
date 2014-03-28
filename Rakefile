@@ -43,15 +43,21 @@ namespace :setup do
       t.run_remote("service ssh reload")
     end
   end
+
+  setup_task :test do |t|
+    t.connect_remote do
+      t.run_remote("which -a ruby")
+      t.run_remote("ruby -v")
+      t.run_remote("/usr/local/bin/ruby -v")
+    end
+  end
   
   setup_task :ruby do |t|
     ruby_config = t.setup_config.ruby
     file_name = File.basename(ruby_config.download_path).gsub(/\.tar\.gz$/, "")
 
     t.connect_remote do
-      old_ruby = t.run_remote!("which -a ruby").strip
-      t.run_remote("rm #{old_ruby} -f") unless old_ruby.empty?
-      
+      t.run_remote("apt-get update")
       t.run_remote("apt-get install make gcc libssl-dev openssl libreadline6 libreadline6-dev -y")
       t.run_remote("wget #{ruby_config.download_path} -O #{file_name}.tar.gz")
       t.run_remote("tar -xf #{file_name}.tar.gz")
@@ -95,6 +101,7 @@ namespace :setup do
       t.run_remote("apt-get -y install #{package_name}")
     end
   end
+
   setup_task :app_config do |t|
     rails_config = t.setup_config.rails
     app_path = "/var/www/#{rails_config.domain}" 
@@ -183,6 +190,7 @@ namespace :setup do
   setup_task :sources do |t|
     server_config = t.setup_config.server
     t.connect_remote do
+      
       pwd = t.run_remote!("pwd").strip
       t.run_remote("apt-get -y install git")
       t.upload!(server_config.key, "#{pwd}/.ssh/id_rsa")
@@ -191,8 +199,8 @@ namespace :setup do
       t.run_remote("gem install bundler --no-ri --no-rdoc")
       t.run_remote("gem update --system")
       t.run_remote("apt-get install libxml2 libxml2-dev libxslt-dev -y")
-      t.run_remote("apt-get install libmysql-ruby libmysqlclient-dev -y")
-      t.run_remote("rm /usr/bin/ruby")
+      t.run_remote("apt-get install libmysqlclient-dev -y")
+      #t.run_remote("rm /usr/bin/ruby")
     end
   end
 
